@@ -18,11 +18,6 @@
         ]
       );
 
-      devEnv = [
-        pythonEnv
-        pkgs.docker
-      ];
-
       # docker image definition
       dockerImage = pkgs.dockerTools.buildImage {
         name = "SkiSafe-train-image";
@@ -54,7 +49,8 @@
       # "nix develop" : Enters into Dev shell (if needed to debug, etc)
       devShells.${system}.default = pkgs.mkShell {
         packages = [
-          devEnv
+          pkgs.docker
+          pythonEnv
         ];
         shellHook = ''
           echo "Entering dev environment"
@@ -63,19 +59,54 @@
 
       apps.${system} = {
 
-        # "nix run .#buildImage" : builds the docker image and places it in ./bin
+        # "nix run .#buildImage" : builds the docker image, places it in ./bin, and loads it
         buildImage = {
           type = "app";
           program =
             (pkgs.writeShellApplication {
-              name = "build-image";
+              name = "buildImage";
               runtimeInputs = [ pythonEnv ];
               text = ''
                 mkdir -p ./bin
                 cp -f ${dockerImage} ./bin/skisafe-train-image.tar.gz
               '';
             })
-            + "/bin/build-image";
+            + "/bin/buildImage";
+        };
+
+        # "nix run" : builds and runs the docker image, removing the old one with the same tag and its container
+        default = {
+          type = "app";
+          program =
+            (pkgs.writeShellApplication {
+              name = "dockerRun";
+              runtimeInputs = with pkgs; [ docker ];
+              text = ''
+                nix run .#buildImage
+                (docker ps -a -q --filter "ancestor=skisafe-train-image:latest" | xargs docker rm -f) || true
+                docker rmi skisafe-train-image:latest -f || true
+                docker load -i ./bin/skisafe-train-image.tar.gz
+                docker run skisafe-train-image
+              '';
+            })
+            + "/bin/dockerRun";
+        };
+
+        # "nix run .#localRun" : runs everything locally without docker, good for testing
+        localRun = {
+          type = "app";
+          src = ./.;
+          program =
+            (pkgs.writeShellApplication {
+              name = "localRun";
+              runtimeInputs = [
+                pythonEnv
+              ];
+              text = ''
+                python ./src/train.py
+              '';
+            })
+            + "/bin/localRun";
         };
       };
     };
