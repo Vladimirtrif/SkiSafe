@@ -51,7 +51,7 @@
 
     in
     {
-      # "nix develop" : Enters into Dev shell (if needed to debug)
+      # "nix develop" : Enters into Dev shell (if needed to debug, etc)
       devShells.${system}.default = pkgs.mkShell {
         packages = [
           devEnv
@@ -61,19 +61,22 @@
         '';
       };
 
-      # "nix run .#buildImage" : builds the docker image and places it in ./bin
-      apps.${system}.buildImage = {
-        type = "app";
-        program =
-          (pkgs.writeShellApplication {
-            name = "build-image";
-            #runtimeInputs = [ pythonEnv ];
-            text = ''
-              mkdir -p ./bin
-              cp ${dockerImage} ./bin/skisafe-train-image.tar.gz
-            '';
-          })
-          + "/bin/build-image";
+      apps.${system} = {
+
+        # "nix run .#buildImage" : builds the docker image and places it in ./bin
+        buildImage = {
+          type = "app";
+          program =
+            (pkgs.writeShellApplication {
+              name = "build-image";
+              runtimeInputs = [ pythonEnv ];
+              text = ''
+                mkdir -p ./bin
+                cp -f ${dockerImage} ./bin/skisafe-train-image.tar.gz
+              '';
+            })
+            + "/bin/build-image";
+        };
       };
     };
 }
