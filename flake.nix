@@ -11,38 +11,32 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
 
-      # Python environment for the project. Defines dependencies and libraries used for training the model
-      pythonEnv = pkgs.python3.withPackages (
-        ps: with ps; [
-          numpy
-        ]
-      );
-
       # docker image definition
-      dockerImage = pkgs.dockerTools.buildImage {
-        name = "SkiSafe-train-image";
-        tag = "latest";
-        copyToRoot = pkgs.buildEnv {
-          name = "image-env";
-          paths = [
-            pythonEnv
-            ./.
-          ];
-          pathsToLink = [
-            "/bin"
-            "/src"
-            "/Data"
-          ];
-        };
-        config = {
-          WorkingDir = "/src";
-          Env = [ "PATH=/bin/" ];
-          Cmd = [
-            "${pythonEnv}/bin/python"
-            "train.py"
-          ];
-        };
-      };
+      #dockerImage = pkgs.dockerTools.buildImage {
+      #  name = "SkiSafe-train-image";
+      #  tag = "latest";
+      #  copyToRoot = pkgs.buildEnv {
+      #    name = "image-env";
+      #    paths = [
+      #      pythonEnv
+      #      ./.
+      #    ];
+      #    pathsToLink = [
+      #      "/bin"
+      #      "/src"
+      #      "/Data"
+      #    ];
+      #  };
+      #  config = {
+      #    WorkingDir = "/src";
+      #    Env = [ "PATH=/bin/" ];
+      #    Cmd = [
+      #      pip-install
+      #      "python"
+      #      "train.py"
+      #    ];
+      #  };
+      # };
 
     in
     {
@@ -50,7 +44,6 @@
       devShells.${system}.default = pkgs.mkShell {
         packages = [
           pkgs.docker
-          pythonEnv
         ];
         shellHook = ''
           echo "Entering dev environment"
@@ -65,10 +58,12 @@
           program =
             (pkgs.writeShellApplication {
               name = "buildImage";
-              runtimeInputs = [ pythonEnv ];
+              runtimeInputs = with pkgs; [ docker ];
               text = ''
                 mkdir -p ./bin
-                cp -f ${dockerImage} ./bin/skisafe-train-image.tar.gz
+                docker build -t skisafe-train-image:latest .
+                docker save skisafe-train-image:latest | gzip > ./skisafe-train-image.tar.gz
+                mv -f ./skisafe-train-image.tar.gz ./bin/
               '';
             })
             + "/bin/buildImage";
@@ -90,23 +85,6 @@
               '';
             })
             + "/bin/dockerRun";
-        };
-
-        # "nix run .#localRun" : runs everything locally without docker, good for testing
-        localRun = {
-          type = "app";
-          src = ./.;
-          program =
-            (pkgs.writeShellApplication {
-              name = "localRun";
-              runtimeInputs = [
-                pythonEnv
-              ];
-              text = ''
-                python ./src/train.py
-              '';
-            })
-            + "/bin/localRun";
         };
       };
     };
