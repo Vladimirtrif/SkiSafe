@@ -12,21 +12,29 @@ LEARNING_RATE = 0.001
 EPOCH = 5
 GLOBAL_CLIPNORM = 10.0
 
+if __name__ == "__main__":
+    main()
+
+def main():
+  train, _ = laodData()
+  print(train)
+
+
 # Picks Data to train on, creates train/test split
-def loadData:
+def loadData():
   # For now we will use FS0001 for train and FS0002 for test
   train_paths = []
   for image in os.listdir("./Data/FS0001/frames/"):
     train_paths.append({
-      "path": "./Data/FS0001/",
-      "image": image
+      "vid_path": "./Data/FS0001/",
+      "image": image,
       "box": []
     })
   test_paths = []
   for image in os.listdir("./Data/FS0002/frames/"):
     test_paths.append({
-      "path": "./Data/FS0002/",
-      "image": image
+      "vid_path": "./Data/FS0002/",
+      "image": image,
       "box": []
     })
   train_data = addBoxes(train_paths)
@@ -39,13 +47,14 @@ def addBoxes(path_arr):
   for pdict in path_arr:
     frame_num = int(pdict["image"].removeSuffix(".jpg"))
     with open(pdict["path"] + "MC/frames.txt") as f:
-      line_num = frame_num - int(next(f).strip()) + 1
+      line_idx = frame_num - int(next(f).strip())
     with open(pdict["path"] + "MC/boxes.txt") as f:
-      for i in range(line_num - 1):
+      for i in range(line_idx):
         next(f)
-      pdict["box"] = int(next(f).strip())
+      pdict["box"] = [ int(i) for i in next(f).strip().split(',')]
 
-def train:
+def train():
+  
 
-def test:
+def test():
   
